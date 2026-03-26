@@ -17,10 +17,7 @@ except ImportError:
     print("Installa tqdm: pip install tqdm")
     sys.exit(1)
 
-# =========================
-# CONFIG
-# =========================
-VERSION = "1.1"
+VERSION = "1.2"
 
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/RedSocket-V-1.0/RedSocketV1"
 
@@ -29,7 +26,7 @@ IS_WINDOWS = platform.system().lower() == "windows"
 
 
 # =========================
-# BANNER ASCII
+# BANNER
 # =========================
 def print_banner():
     print("\33[31m")
@@ -63,9 +60,6 @@ def get_file_hash(path):
     return sha256.hexdigest()
 
 
-# =========================
-# VERSION CHECK
-# =========================
 def extract_version(content_bytes):
     try:
         content = content_bytes.decode()
@@ -78,42 +72,34 @@ def extract_version(content_bytes):
 
 
 # =========================
-# UPDATE PRO
+# UPDATE
 # =========================
 def update_script(auto=False):
     if not auto:
-        print("\n[+] Checking for updates...")
+        print("\n[+] Checking updates...")
 
     try:
         with urllib.request.urlopen(GITHUB_RAW_URL, timeout=10) as response:
             latest_script = response.read()
 
-        latest_hash = hashlib.sha256(latest_script).hexdigest()
-        local_hash = get_file_hash(script_path)
-
-        latest_version = extract_version(latest_script)
-
-        if local_hash == latest_hash:
+        if hashlib.sha256(latest_script).hexdigest() == get_file_hash(script_path):
             if not auto:
-                print("[=] Already up to date.")
+                print("[=] Already updated.")
             return
 
-        print(f"[+] New version found: {latest_version or 'unknown'}")
+        print("[+] New version found!")
 
-        # Backup
         backup = script_path + ".bak"
         if os.path.exists(script_path):
             os.replace(script_path, backup)
 
-        # Scrittura sicura
         temp = script_path + ".tmp"
         with open(temp, "wb") as f:
             f.write(latest_script)
 
         os.replace(temp, script_path)
 
-        print("[✔] Update completed!")
-        print("Riavvia lo script per usare la nuova versione.")
+        print("[✔] Update done! Restart script.")
 
     except Exception as e:
         if not auto:
@@ -123,29 +109,7 @@ def update_script(auto=False):
 
 
 # =========================
-# NMAP COMMAND BUILDER
-# =========================
-def build_nmap_command(choice, target, output_file):
-    if choice == "1":  # quick
-        return ["nmap", "-F", "-sV", "-oN", output_file, target]
-
-    elif choice == "2":  # full
-        cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", output_file, target]
-        if not IS_WINDOWS:
-            cmd.insert(0, "sudo")
-        return cmd
-
-    elif choice == "3":  # UDP
-        cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", output_file, target]
-        if not IS_WINDOWS:
-            cmd.insert(0, "sudo")
-        return cmd
-
-    return None
-
-
-# =========================
-# RUN NMAP
+# NMAP RUNNER
 # =========================
 def run_nmap(command):
     process = subprocess.Popen(
@@ -161,61 +125,56 @@ def run_nmap(command):
 
             match = re.search(r"(\d+)% done", line)
             if match:
-                percent = int(match.group(1))
-                pbar.n = percent
+                pbar.n = int(match.group(1))
                 pbar.refresh()
 
         process.wait()
 
 
 # =========================
-# SCAN
+# SCANS
 # =========================
-def run_scan():
+def scan_quick(target):
+    return ["nmap", "-F", "-sV", "-oN", f"quick_{target}.txt", target]
+
+
+def scan_full(target):
+    cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", f"full_{target}.txt", target]
+    if not IS_WINDOWS:
+        cmd.insert(0, "sudo")
+    return cmd
+
+
+def scan_udp(target):
+    cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", f"udp_{target}.txt", target]
+    if not IS_WINDOWS:
+        cmd.insert(0, "sudo")
+    return cmd
+
+
+def run_scan(choice):
     print_banner()
 
     if shutil.which("nmap") is None:
-        print("[!] Nmap non installato.")
+        print("[!] Nmap non installato")
         return
 
-    target = input("Target (IP/Dominio): ").strip()
-    filename = f"scan_{target}.txt"
+    target = input("Target: ").strip()
 
-    print("\nTipi di scansione:")
-    print("1 - Quick")
-    print("2 - Full")
-    print("3 - UDP (lenta)")
-
-    choice = input("Scelta: ").strip()
-
-    command = build_nmap_command(choice, target, filename)
-
-    if not command:
-        print("Scelta non valida")
+    if choice == "1":
+        cmd = scan_quick(target)
+    elif choice == "2":
+        cmd = scan_full(target)
+    elif choice == "3":
+        cmd = scan_udp(target)
+    else:
+        print("Errore scelta")
         return
 
-    print("\n[+] Avvio scansione...\n")
-    run_nmap(command)
+    print("\n[+] Scanning...\n")
+    run_nmap(cmd)
 
     print("\n[✔] Scan completata")
-    print(f"[+] File salvato: {filename}")
-
-
-# =========================
-# HELP
-# =========================
-def show_help():
-    print("""
-RedSocket v1.1
-
-1 - Scan rete
-2 - Aggiornamento automatico
-3 - UDP scan disponibile
-
-Requisiti:
-- nmap
-- tqdm (pip install tqdm)
-""")
 
 
 # =========================
@@ -223,20 +182,22 @@ Requisiti:
 # =========================
 def main_menu():
     while True:
-        print("\n=== RedSocket Menu ===")
-        print("1 - Scan")
-        print("2 - Update")
-        print("3 - Help")
+        print_banner()
+        print("1 - Quick Scan")
+        print("2 - Full Scan")
+        print("3 - UDP Scan 🔥")
+        print("4 - Update")
+        print("5 - Help")
         print("0 - Exit")
 
         choice = input(">> ").strip()
 
-        if choice == "1":
-            run_scan()
-        elif choice == "2":
+        if choice in ["1", "2", "3"]:
+            run_scan(choice)
+        elif choice == "4":
             update_script()
-        elif choice == "3":
-            show_help()
+        elif choice == "5":
+            print("Tool di network scanning avanzato.")
         elif choice == "0":
             sys.exit(0)
         else:
@@ -247,6 +208,5 @@ def main_menu():
 # START
 # =========================
 if __name__ == "__main__":
-    print_banner()
     update_script(auto=True)
     main_menu()
