@@ -5,109 +5,35 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+import urllib.error
 import re
 import hashlib
 import time
-import sys
+import platform
 
-# URL del file su GitHub (l'ultima versione del file)
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/main/redsocket"
+try:
+    from tqdm import tqdm
+except ImportError:
+    print("Installa tqdm: pip install tqdm")
+    sys.exit(1)
 
-# Ottieni la directory corrente in cui si trova lo script
-current_directory = os.path.dirname(os.path.abspath(__file__))
-redsocket_file_path = os.path.join(current_directory, "RedSocket.py")
+# =========================
+# CONFIG
+# =========================
+VERSION = "1.1"
 
-# Funzione di debug
-def debug():
-    print(f"Debugging Iniziale - Current Directory: {current_directory}")
-    print(f"Debugging Iniziale - RedSocket File Path: {redsocket_file_path}")
-    if os.path.exists(redsocket_file_path):
-        print("Il file RedSocket.py esiste!")
-    else:
-        print("Il file RedSocket.py NON esiste!")
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/RedSocket-V-1.0/RedSocketV1"
 
-# Funzione per ottenere il contenuto del file e calcolare l'hash
-def get_file_hash(file_path):
-    """Calcola l'hash SHA256 del file per comparare le versioni"""
-    sha256_hash = hashlib.sha256()
-    try:
-        with open(file_path, "rb") as f:
-            # Legge il file in blocchi di 4K
-            for byte_block in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(byte_block)
-    except FileNotFoundError:
-        print(f"File non trovato: {file_path}")
-        return None
-    return sha256_hash.hexdigest()
+script_path = os.path.abspath(__file__)
+IS_WINDOWS = platform.system().lower() == "windows"
 
-# Funzione per eseguire l'aggiornamento
-def update_script():
-    print("Updating RedSocket...")
 
-    # Verifica se il percorso del file esiste
-    if not os.path.exists(current_directory):
-        print(f"Directory non trovata: {current_directory}")
-        sys.exit(1)
-
-    try:
-        # Scarica il file da GitHub e ottieni il contenuto
-        print(f"Scaricando l'ultima versione da: {GITHUB_RAW_URL}")
-        response = urllib.request.urlopen(GITHUB_RAW_URL)
-        latest_script = response.read()
-
-        # Calcola l'hash della versione scaricata
-        latest_hash = hashlib.sha256(latest_script).hexdigest()
-
-        # Calcola l'hash del file locale
-        local_hash = get_file_hash(redsocket_file_path)
-
-        if local_hash is None:
-            print(f"Impossibile trovare il file {redsocket_file_path}. Verifica che il file esista.")
-            sys.exit(1)
-
-        if latest_hash == local_hash:
-            print("Hai già l'ultima versione di RedSocket!")
-        else:
-            # Salva la versione aggiornata nel file
-            with open(redsocket_file_path, "wb") as f:
-                f.write(latest_script)
-            print(f"Update complete! The script has been updated at {redsocket_file_path}")
-
-            # Riavvia lo script aggiornato
-            print("Riavvio dello script...")
-            time.sleep(2)  # Aspetta 2 secondi prima di riavviare
-            os.execv(sys.executable, ['python'] + sys.argv)  # Riavvia il programma
-
-    except urllib.error.URLError as e:
-        print(f"Update failed: Network issue or invalid URL. {e}")
-    except PermissionError as e:
-        print(f"Update failed: Permission issue. {e}")
-    except Exception as e:
-        print(f"Update failed: Unexpected error. {e}")
-
-    # Torna al menu principale
-    main_menu()  # Ritorna al menu principale dopo l'aggiornamento
-
-# Funzione per mostrare l'aiuto
-def show_help():
-    print("""
-    RedSocket - Help
-
-    Comandi disponibili:
-    --update    : Esegui l'aggiornamento dello script.
-    --help      : Mostra questo messaggio di aiuto.
-    scan        : Avvia una scansione di rete.
-    """)
-
-    # Torna al menu principale
-    input("Premi Enter per tornare al menu principale...")  # Aspetta l'input dell'utente per tornare al menu
-    main_menu()  # Ritorna al menu principale dopo aver mostrato l'aiuto
-
-# Funzione per eseguire la scansione
-def run_scan():
-    # ASCII art di benvenuto
+# =========================
+# BANNER ASCII
+# =========================
+def print_banner():
     print("\33[31m")
-    ascii_art = '''
+    ascii_art = r'''
        (`-')  (`-')  _ _(`-')    (`-').->                    <-.(`-')  (`-')  _(`-')
     <-.(OO )  ( OO).-/( (OO ).-> ( OO)_      .->    _         __( OO)  ( OO).-/( OO).->
     ,------,)(,------. \\    .'_ (_)--\\_)(`-')----.  \\-,-----.'-'. ,--.(,------./    '._
@@ -116,93 +42,211 @@ def run_scan():
     |  .   .' |  .--'  |  |  / :.-._)  \\ \\|  |)|  | ||  |OO )|  .   '  |  .--'    |  |
     |  |\\  \\  |  `---. |  '-'  /\\       / '  '-'  '(_'  '--'\\|  |\\   \\ |  `---.   |  |
     `--' '--' `------' `------'  `-----'   `-----'    `-----'`--' '--' `------'   `--'
-                   REDSOCKET V.1
-    '''
+
+                     REDSOCKET v{}
+    '''.format(VERSION)
+
     print(ascii_art)
 
-    # Controllo se Nmap è installato
+
+# =========================
+# HASH
+# =========================
+def get_file_hash(path):
+    if not os.path.exists(path):
+        return None
+
+    sha256 = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
+# =========================
+# VERSION CHECK
+# =========================
+def extract_version(content_bytes):
+    try:
+        content = content_bytes.decode()
+        match = re.search(r'VERSION\s*=\s*["\'](.+?)["\']', content)
+        if match:
+            return match.group(1)
+    except:
+        pass
+    return None
+
+
+# =========================
+# UPDATE PRO
+# =========================
+def update_script(auto=False):
+    if not auto:
+        print("\n[+] Checking for updates...")
+
+    try:
+        with urllib.request.urlopen(GITHUB_RAW_URL, timeout=10) as response:
+            latest_script = response.read()
+
+        latest_hash = hashlib.sha256(latest_script).hexdigest()
+        local_hash = get_file_hash(script_path)
+
+        latest_version = extract_version(latest_script)
+
+        if local_hash == latest_hash:
+            if not auto:
+                print("[=] Already up to date.")
+            return
+
+        print(f"[+] New version found: {latest_version or 'unknown'}")
+
+        # Backup
+        backup = script_path + ".bak"
+        if os.path.exists(script_path):
+            os.replace(script_path, backup)
+
+        # Scrittura sicura
+        temp = script_path + ".tmp"
+        with open(temp, "wb") as f:
+            f.write(latest_script)
+
+        os.replace(temp, script_path)
+
+        print("[✔] Update completed!")
+        print("Riavvia lo script per usare la nuova versione.")
+
+    except Exception as e:
+        if not auto:
+            print(f"[!] Update error: {e}")
+
+    time.sleep(2)
+
+
+# =========================
+# NMAP COMMAND BUILDER
+# =========================
+def build_nmap_command(choice, target, output_file):
+    if choice == "1":  # quick
+        return ["nmap", "-F", "-sV", "-oN", output_file, target]
+
+    elif choice == "2":  # full
+        cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", output_file, target]
+        if not IS_WINDOWS:
+            cmd.insert(0, "sudo")
+        return cmd
+
+    elif choice == "3":  # UDP
+        cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", output_file, target]
+        if not IS_WINDOWS:
+            cmd.insert(0, "sudo")
+        return cmd
+
+    return None
+
+
+# =========================
+# RUN NMAP
+# =========================
+def run_nmap(command):
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True
+    )
+
+    with tqdm(total=100, desc="Scanning", unit="%") as pbar:
+        for line in process.stdout:
+            print(line.strip())
+
+            match = re.search(r"(\d+)% done", line)
+            if match:
+                percent = int(match.group(1))
+                pbar.n = percent
+                pbar.refresh()
+
+        process.wait()
+
+
+# =========================
+# SCAN
+# =========================
+def run_scan():
+    print_banner()
+
     if shutil.which("nmap") is None:
-        print("\33[31m Nmap is not installed")
-        exit(1)
+        print("[!] Nmap non installato.")
+        return
 
-    # Input target
-    target = input("\33[31m Insert target (IP OR DOMAIN): ")
+    target = input("Target (IP/Dominio): ").strip()
+    filename = f"scan_{target}.txt"
 
-    # Nome file automatico
-    file = f"redsocket_{target}.txt"
+    print("\nTipi di scansione:")
+    print("1 - Quick")
+    print("2 - Full")
+    print("3 - UDP (lenta)")
 
-    # Menu scan
-    print("\33[31m \nChoose scan type: ")
-    print("\33[31m 1 - Quick scan (common ports)")
-    print("\33[31m 2 - Full scan (all ports)")
+    choice = input("Scelta: ").strip()
 
-    choice = input("Choice: ").strip()
+    command = build_nmap_command(choice, target, filename)
 
-    # Costruzione del comando
-    if choice == "1":
-        command = ["nmap", "-F", "-sV", "-oN", file, target]
-    elif choice == "2":
-        command = ["sudo", "nmap", "-sS", "-p-", "-sV", "-oN", file, target]
-    else:
-        print("\33[31m Invalid choice. Exiting.")
-        exit(1)
+    if not command:
+        print("Scelta non valida")
+        return
 
-    # Funzione per eseguire Nmap con la barra di progresso
-    def run_nmap_with_progress(command):
-        # Esegui il comando con subprocess e cattura l'output
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    print("\n[+] Avvio scansione...\n")
+    run_nmap(command)
 
-        # Inizializza la barra di progresso
-        with tqdm(total=100, desc="Scanning", unit="%", ncols=100) as pbar:
-            # Leggi l'output di Nmap riga per riga
-            for line in process.stdout:
-                print("Nmap output:", line.strip())  # Aggiungi il debug qui per capire l'output
+    print("\n[✔] Scan completata")
+    print(f"[+] File salvato: {filename}")
 
-                # Cerca la percentuale nell'output di Nmap (Nmap mostra qualcosa come "80% done")
-                if "percent done" in line.lower():
-                    match = re.search(r"(\d+)% done", line)
-                    if match:
-                        percent = int(match.group(1))
-                        pbar.n = percent  # Imposta la percentuale nella barra
-                        pbar.last_print_n = percent
-                        pbar.update(0)
 
-            # Aspetta che il processo finisca
-            process.wait()
+# =========================
+# HELP
+# =========================
+def show_help():
+    print("""
+RedSocket v1.1
 
-        return process
+1 - Scan rete
+2 - Aggiornamento automatico
+3 - UDP scan disponibile
 
-    # Avvio scansione con la barra di progresso
-    print("\33[31m \nScanning in progress...\n")
-    run_nmap_with_progress(command)
+Requisiti:
+- nmap
+- tqdm (pip install tqdm)
+""")
 
-    # Fine
-    print("\33[31m \nScan completed!")
-    print(f"\33[31m Results saved in: {file}")
 
-# Funzione per il menu iniziale
+# =========================
+# MENU
+# =========================
 def main_menu():
-    print("\33[31m")
-    print("Benvenuto in RedSocket v1!")
-    print("\nScegli cosa vuoi fare:")
-    print("1 - Esegui aggiornamento (Update)")
-    print("2 - Mostra aiuto (Help)")
-    print("3 - Inizia scansione (Scan)")
+    while True:
+        print("\n=== RedSocket Menu ===")
+        print("1 - Scan")
+        print("2 - Update")
+        print("3 - Help")
+        print("0 - Exit")
 
-    choice = input("\nScegli una opzione (1, 2, 3): ").strip()
+        choice = input(">> ").strip()
 
-    if choice == "1":
-        update_script()  # Esegui l'aggiornamento
-    elif choice == "2":
-        show_help()  # Mostra l'aiuto
-    elif choice == "3":
-        run_scan()  # Avvia la scansione
-    else:
-        print("\33[31m Opzione non valida. Riprova.")
-        main_menu()  # Chiedi nuovamente l'input
+        if choice == "1":
+            run_scan()
+        elif choice == "2":
+            update_script()
+        elif choice == "3":
+            show_help()
+        elif choice == "0":
+            sys.exit(0)
+        else:
+            print("Opzione non valida")
 
-# Debug iniziale
-debug()
 
-# Avvia il menu principale all'inizio
-main_menu()
+# =========================
+# START
+# =========================
+if __name__ == "__main__":
+    print_banner()
+    update_script(auto=True)
+    main_menu()
