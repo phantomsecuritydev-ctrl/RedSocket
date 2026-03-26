@@ -11,7 +11,7 @@ import time
 import sys
 
 # URL del file su GitHub (l'ultima versione del file)
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/RedSocket-V-1.0/RedSocketV1"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/main/RedSocket.py"
 
 # Ottieni la directory corrente in cui si trova lo script
 current_directory = os.path.dirname(os.path.abspath(__file__))
