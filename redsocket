@@ -5,11 +5,12 @@ import shutil
 import subprocess
 import sys
 import urllib.request
-import urllib.error
-import re
 import hashlib
-import time
 import platform
+import time
+import re
+import socket
+import json
 
 try:
     from tqdm import tqdm
@@ -17,13 +18,22 @@ except ImportError:
     print("Installa tqdm: pip install tqdm")
     sys.exit(1)
 
-VERSION = "1.2"
-
+VERSION = "2.1"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/RedSocket-V-1.0/RedSocketV1"
-
-script_path = os.path.abspath(__file__)
+SCRIPT_PATH = os.path.abspath(__file__)
 IS_WINDOWS = platform.system().lower() == "windows"
-
+CRITICAL_PORTS = {
+    "21": "FTP",
+    "22": "SSH",
+    "23": "TELNET",
+    "25": "SMTP",
+    "53": "DNS",
+    "80": "HTTP",
+    "110": "POP3",
+    "143": "IMAP",
+    "443": "HTTPS",
+    "3389": "RDP"
+}
 
 # =========================
 # BANNER
@@ -42,34 +52,34 @@ def print_banner():
 
                      REDSOCKET v{}
     '''.format(VERSION)
-
     print(ascii_art)
 
-
 # =========================
-# HASH
+# UTILS
 # =========================
 def get_file_hash(path):
     if not os.path.exists(path):
         return None
-
     sha256 = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             sha256.update(chunk)
     return sha256.hexdigest()
 
-
-def extract_version(content_bytes):
+def resolve_host(target):
     try:
-        content = content_bytes.decode()
-        match = re.search(r'VERSION\s*=\s*["\'](.+?)["\']', content)
-        if match:
-            return match.group(1)
-    except:
-        pass
-    return None
+        ip = socket.gethostbyname(target)
+        return ip
+    except Exception:
+        return None
 
+def geo_ip(ip):
+    try:
+        with urllib.request.urlopen(f"https://ipinfo.io/{ip}/json") as response:
+            data = json.load(response)
+            return f"{data.get('city','')}, {data.get('region','')}, {data.get('country','')}"
+    except:
+        return "Geolocalizzazione non disponibile"
 
 # =========================
 # UPDATE
@@ -82,24 +92,22 @@ def update_script(auto=False):
         with urllib.request.urlopen(GITHUB_RAW_URL, timeout=10) as response:
             latest_script = response.read()
 
-        if hashlib.sha256(latest_script).hexdigest() == get_file_hash(script_path):
+        if hashlib.sha256(latest_script).hexdigest() == get_file_hash(SCRIPT_PATH):
             if not auto:
                 print("[=] Already updated.")
             return
 
         print("[+] New version found!")
+        backup = SCRIPT_PATH + ".bak"
+        if os.path.exists(SCRIPT_PATH):
+            os.replace(SCRIPT_PATH, backup)
 
-        backup = script_path + ".bak"
-        if os.path.exists(script_path):
-            os.replace(script_path, backup)
-
-        temp = script_path + ".tmp"
+        temp = SCRIPT_PATH + ".tmp"
         with open(temp, "wb") as f:
             f.write(latest_script)
 
-        os.replace(temp, script_path)
-
-        print("[✔] Update done! Restart script.")
+        os.replace(temp, SCRIPT_PATH)
+        print("[✔] Update done! Restart script to apply changes.")
 
     except Exception as e:
         if not auto:
@@ -107,106 +115,138 @@ def update_script(auto=False):
 
     time.sleep(2)
 
+# =========================
+# SCAN BUILDERS
+# =========================
+def build_scan(target, scan_type):
+    if scan_type == "quick":
+        return ["nmap", "-F", "-sV", "-oN", f"quick_{target}.txt", target]
+    elif scan_type == "full":
+        cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", f"full_{target}.txt", target]
+        if not IS_WINDOWS: cmd.insert(0, "sudo")
+        return cmd
+    elif scan_type == "udp":
+        cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", f"udp_{target}.txt", target]
+        if not IS_WINDOWS: cmd.insert(0, "sudo")
+        return cmd
 
 # =========================
-# NMAP RUNNER
+# PARSER PORTE
+# =========================
+def parse_nmap_output(file_path):
+    if not os.path.exists(file_path):
+        print(f"[!] File {file_path} non trovato")
+        return
+    print("\n[+] Risultati evidenziati:")
+    with open(file_path,"r") as f:
+        for line in f:
+            line = line.strip()
+            match_open = re.match(r"(\d+)/tcp\s+open", line)
+            match_udp = re.match(r"(\d+)/udp\s+open", line)
+            if match_open:
+                port = match_open.group(1)
+                label = CRITICAL_PORTS.get(port,"")
+                print(f"\33[32m[OPEN] {port}/tcp {label}\33[0m")
+            elif match_udp:
+                port = match_udp.group(1)
+                label = CRITICAL_PORTS.get(port,"")
+                print(f"\33[34m[OPEN] {port}/udp {label}\33[0m")
+            elif re.match(r"\d+/tcp\s+closed", line):
+                print(f"\33[31m[CLOSED] {line}\33[0m")
+
+# =========================
+# SCAN EXECUTOR
 # =========================
 def run_nmap(command):
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    output_file = None
+    for i,arg in enumerate(command):
+        if arg.startswith("-oN") and i+1<len(command):
+            output_file = command[i+1]
 
     with tqdm(total=100, desc="Scanning", unit="%") as pbar:
         for line in process.stdout:
             print(line.strip())
-
             match = re.search(r"(\d+)% done", line)
             if match:
                 pbar.n = int(match.group(1))
                 pbar.refresh()
-
         process.wait()
 
+    if output_file:
+        parse_nmap_output(output_file)
 
 # =========================
-# SCANS
+# RUN SCAN MENU
 # =========================
-def scan_quick(target):
-    return ["nmap", "-F", "-sV", "-oN", f"quick_{target}.txt", target]
-
-
-def scan_full(target):
-    cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", f"full_{target}.txt", target]
-    if not IS_WINDOWS:
-        cmd.insert(0, "sudo")
-    return cmd
-
-
-def scan_udp(target):
-    cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", f"udp_{target}.txt", target]
-    if not IS_WINDOWS:
-        cmd.insert(0, "sudo")
-    return cmd
-
-
 def run_scan(choice):
-    print_banner()
-
     if shutil.which("nmap") is None:
         print("[!] Nmap non installato")
         return
 
-    target = input("Target: ").strip()
+    target = input("Inserisci target (IP o dominio): ").strip()
+
+    ip = resolve_host(target)
+    print(f"[+] IP target: {ip if ip else 'Non risolvibile'}")
+
+    if ip:
+        print(f"[+] Geolocalizzazione: {geo_ip(ip)}")
 
     if choice == "1":
-        cmd = scan_quick(target)
+        cmd = build_scan(target, "quick")
     elif choice == "2":
-        cmd = scan_full(target)
+        cmd = build_scan(target, "full")
     elif choice == "3":
-        cmd = scan_udp(target)
+        cmd = build_scan(target, "udp")
     else:
-        print("Errore scelta")
+        print("Scelta non valida")
         return
 
-    print("\n[+] Scanning...\n")
+    print("\n[+] Avvio scansione...\n")
     run_nmap(cmd)
 
-    print("\n[✔] Scan completata")
-
+    print("\n[✔] Scan completata.")
 
 # =========================
-# MENU
+# HELP
+# =========================
+def show_help():
+    print("""
+RedSocket v2.1 - Help
+
+Comandi disponibili:
+1 - Quick TCP Scan
+2 - Full TCP Scan
+3 - UDP Scan
+4 - Update
+5 - Help
+0 - Exit
+""")
+
+# =========================
+# MAIN MENU
 # =========================
 def main_menu():
     while True:
-        print_banner()
-        print("1 - Quick Scan")
-        print("2 - Full Scan")
-        print("3 - UDP Scan 🔥")
+        print("=== Menu Principale ===")
+        print("1 - Quick TCP Scan")
+        print("2 - Full TCP Scan")
+        print("3 - UDP Scan")
         print("4 - Update")
         print("5 - Help")
         print("0 - Exit")
 
         choice = input(">> ").strip()
-
-        if choice in ["1", "2", "3"]:
-            run_scan(choice)
-        elif choice == "4":
-            update_script()
-        elif choice == "5":
-            print("Tool di network scanning avanzato.")
-        elif choice == "0":
-            sys.exit(0)
-        else:
-            print("Opzione non valida")
-
+        if choice in ["1","2","3"]: run_scan(choice)
+        elif choice=="4": update_script()
+        elif choice=="5": show_help()
+        elif choice=="0": sys.exit(0)
+        else: print("Opzione non valida.")
 
 # =========================
 # START
 # =========================
-if __name__ == "__main__":
+if __name__=="__main__":
+    print_banner()
     update_script(auto=True)
     main_menu()
