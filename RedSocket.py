@@ -7,6 +7,8 @@ import sys
 import urllib.request
 import re
 import hashlib
+import time
+import sys
 
 # URL del file su GitHub (l'ultima versione del file)
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/RedSocket-V-1.0/RedSocketV1"
@@ -15,19 +17,37 @@ GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedS
 current_directory = os.path.dirname(os.path.abspath(__file__))
 redsocket_file_path = os.path.join(current_directory, "RedSocket.py")
 
+# Funzione di debug
+def debug():
+    print(f"Debugging Iniziale - Current Directory: {current_directory}")
+    print(f"Debugging Iniziale - RedSocket File Path: {redsocket_file_path}")
+    if os.path.exists(redsocket_file_path):
+        print("Il file RedSocket.py esiste!")
+    else:
+        print("Il file RedSocket.py NON esiste!")
+
 # Funzione per ottenere il contenuto del file e calcolare l'hash
 def get_file_hash(file_path):
     """Calcola l'hash SHA256 del file per comparare le versioni"""
     sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        # Legge il file in blocchi di 4K
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
+    try:
+        with open(file_path, "rb") as f:
+            # Legge il file in blocchi di 4K
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+    except FileNotFoundError:
+        print(f"File non trovato: {file_path}")
+        return None
     return sha256_hash.hexdigest()
 
 # Funzione per eseguire l'aggiornamento
 def update_script():
     print("Updating RedSocket...")
+
+    # Verifica se il percorso del file esiste
+    if not os.path.exists(current_directory):
+        print(f"Directory non trovata: {current_directory}")
+        sys.exit(1)
 
     try:
         # Scarica il file da GitHub e ottieni il contenuto
@@ -41,6 +61,10 @@ def update_script():
         # Calcola l'hash del file locale
         local_hash = get_file_hash(redsocket_file_path)
 
+        if local_hash is None:
+            print(f"Impossibile trovare il file {redsocket_file_path}. Verifica che il file esista.")
+            sys.exit(1)
+
         if latest_hash == local_hash:
             print("Hai già l'ultima versione di RedSocket!")
         else:
@@ -48,15 +72,21 @@ def update_script():
             with open(redsocket_file_path, "wb") as f:
                 f.write(latest_script)
             print(f"Update complete! The script has been updated at {redsocket_file_path}")
-        
+
+            # Riavvia lo script aggiornato
+            print("Riavvio dello script...")
+            time.sleep(2)  # Aspetta 2 secondi prima di riavviare
+            os.execv(sys.executable, ['python'] + sys.argv)  # Riavvia il programma
+
     except urllib.error.URLError as e:
         print(f"Update failed: Network issue or invalid URL. {e}")
     except PermissionError as e:
         print(f"Update failed: Permission issue. {e}")
     except Exception as e:
         print(f"Update failed: Unexpected error. {e}")
-    
-    sys.exit(0)  # Termina l'esecuzione dello script dopo l'aggiornamento
+
+    # Torna al menu principale
+    main_menu()  # Ritorna al menu principale dopo l'aggiornamento
 
 # Funzione per mostrare l'aiuto
 def show_help():
@@ -68,6 +98,10 @@ def show_help():
     --help      : Mostra questo messaggio di aiuto.
     scan        : Avvia una scansione di rete.
     """)
+
+    # Torna al menu principale
+    input("Premi Enter per tornare al menu principale...")  # Aspetta l'input dell'utente per tornare al menu
+    main_menu()  # Ritorna al menu principale dopo aver mostrato l'aiuto
 
 # Funzione per eseguire la scansione
 def run_scan():
@@ -166,6 +200,9 @@ def main_menu():
     else:
         print("\33[31m Opzione non valida. Riprova.")
         main_menu()  # Chiedi nuovamente l'input
+
+# Debug iniziale
+debug()
 
 # Avvia il menu principale all'inizio
 main_menu()
