@@ -18,7 +18,7 @@ except ImportError:
     print("Installa tqdm: pip install tqdm")
     sys.exit(1)
 
-VERSION = "2.1"
+VERSION = "2.2"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/main/redsocket"
 SCRIPT_PATH = os.path.abspath(__file__)
 IS_WINDOWS = platform.system().lower() == "windows"
@@ -118,15 +118,20 @@ def update_script(auto=False):
 # =========================
 # SCAN BUILDERS
 # =========================
+def save_path():
+    # Default path: Desktop of the user
+    home_dir = os.path.expanduser("~")
+    return os.path.join(home_dir, "Desktop")
+
 def build_scan(target, scan_type):
     if scan_type == "quick":
-        return ["nmap", "-F", "-sV", "-oN", f"quick_{target}.txt", target]
+        return ["nmap", "-F", "-sV", "-oN", os.path.join(save_path(), f"quick_{target}.txt"), target]
     elif scan_type == "full":
-        cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", f"full_{target}.txt", target]
+        cmd = ["nmap", "-sS", "-p-", "-sV", "-oN", os.path.join(save_path(), f"full_{target}.txt"), target]
         if not IS_WINDOWS: cmd.insert(0, "sudo")
         return cmd
     elif scan_type == "udp":
-        cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", f"udp_{target}.txt", target]
+        cmd = ["nmap", "-sU", "--top-ports", "200", "-oN", os.path.join(save_path(), f"udp_{target}.txt"), target]
         if not IS_WINDOWS: cmd.insert(0, "sudo")
         return cmd
 
@@ -212,14 +217,13 @@ def run_scan(choice):
 # =========================
 def show_help():
     print("""
-RedSocket v2.1 - Help
+RedSocket v2.2 - Help
 
 Comandi disponibili:
 1 - Quick TCP Scan
 2 - Full TCP Scan
 3 - UDP Scan
 4 - Update
-5 - Help
 0 - Exit
 """)
 
@@ -233,13 +237,11 @@ def main_menu():
         print("2 - Full TCP Scan")
         print("3 - UDP Scan")
         print("4 - Update")
-        print("5 - Help")
         print("0 - Exit")
 
         choice = input(">> ").strip()
         if choice in ["1","2","3"]: run_scan(choice)
         elif choice=="4": update_script()
-        elif choice=="5": show_help()
         elif choice=="0": sys.exit(0)
         else: print("Opzione non valida.")
 
