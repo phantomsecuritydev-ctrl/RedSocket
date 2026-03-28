@@ -224,7 +224,7 @@ Comandi disponibili:
 2 - Full TCP Scan
 3 - UDP Scan
 4 - Update
-0 - Exit
+
 """)
 
 # =========================
@@ -237,7 +237,7 @@ def main_menu():
         print("2 - Full TCP Scan")
         print("3 - UDP Scan")
         print("4 - Update")
-        print("0 - Exit")
+        
 
         choice = input(">> ").strip()
         if choice in ["1","2","3"]: run_scan(choice)
