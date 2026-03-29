@@ -39,7 +39,7 @@ except ImportError:
 from datetime import datetime
 
 VERSION = "3.0"
-UPDATE_URL = ""
+UPDATE_URL = "https://raw.githubusercontent.com/phantomsecuritydev-ctrl/RedSocket/refs/heads/main/redsocket"
 VULN_DB_URL = ""
 VULN_DB_FILE = "vuln_db.json"
 
