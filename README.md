@@ -43,6 +43,10 @@ RedSocket includes multiple predefined scanning modes:
 * **Vulnerability Scan** – Uses Nmap NSE vulnerability scripts
 * **Masscan Scan** – High-speed full-range scanning with automatic sudo detection
 
+* ### User Interface
+![User Interface](Images/Interface.png)
+
+
 ---
 
 ### Custom Command Mode
@@ -79,6 +83,10 @@ After each scan, users can choose:
 * Skip saving
 
 Files are automatically stored on the Desktop with timestamped filenames.
+
+
+### Interface Choice -oA -oN
+![input save Interface](Images/Input.png)
 
 ---
 
@@ -153,6 +161,10 @@ Example output:
 
 Results will be saved to the Desktop if enabled.
 
+
+### Fast Scan Example
+![Fast Scan](Images/Fastscan.png)
+
 ---
 
 ## Project Goals
@@ -191,17 +203,6 @@ This tool is intended for educational purposes and authorized security testing o
 Unauthorized network scanning may be illegal in your jurisdiction.
 The author assumes no responsibility for misuse or damage caused by this software.
 
-
-## Screenshots
-
-### User Interface
-![User Interface](Images/Interface.png)
-
-### Interface Choice -oA -oN
-![input save Interface](Images/Input.png)
-
-### Fast Scan Example
-![Fast Scan](Images/Fastscan.png)
 
 
 
