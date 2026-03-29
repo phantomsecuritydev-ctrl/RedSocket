@@ -158,3 +158,7 @@ MIT License
 ## Disclaimer
 
 Use this tool only on systems you own or have permission to test. Unauthorized scanning may be illegal in your jurisdiction.
+
+This tool is licensed under the MIT License.
+It requires Nmap to be installed on the system.
+Nmap is licensed separately under the Nmap Public Source License.
