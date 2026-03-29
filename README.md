@@ -1,27 +1,29 @@
-# RedSocket
-A tool that automates Nmap scans and saves results to a file. More features coming soon
 # RedSocket v3.0
 
-**RedSocket** is an interactive command‑line wrapper for Nmap and Masscan designed for fast, practical network reconnaissance with automatic logging, smart output highlighting, and zero‑friction scanning.
+RedSocket is an interactive command-line wrapper for Nmap and Masscan designed to simplify and accelerate real-world network reconnaissance.
+
+It provides preconfigured scan profiles, automatic result management, and a clean menu-driven interface for fast and reliable scanning without memorizing complex command-line flags.
 
 ---
 
 ## Why RedSocket?
 
-Running raw `nmap` commands is powerful but slow in real‑world situations where speed and clarity matter. RedSocket provides:
+While Nmap is extremely powerful, using it efficiently during live engagements or labs can be slow and error-prone. RedSocket focuses on speed, clarity, and usability.
 
-* Prebuilt scan profiles for common scenarios
-* Automatic result saving to Desktop
-* Real‑time highlighting of critical services (SSH, RDP, FTP, etc.)
-* Session logging for command history
-* Built‑in auto‑update system
+It provides:
 
-RedSocket is built for:
+* Prebuilt scan profiles for common reconnaissance scenarios
+* Automatic result saving with timestamps
+* Real-time highlighting of critical services (SSH, RDP, FTP, etc.)
+* Session logging for reproducibility
+* Optional high-speed scanning using Masscan
 
-* Pentesters
+RedSocket is designed for:
+
+* Penetration testers
 * CTF players
-* Lab environments
-* Anyone who wants faster recon without memorizing flags
+* Cybersecurity students
+* Lab and practice environments
 
 ---
 
@@ -29,48 +31,54 @@ RedSocket is built for:
 
 ### Scan Profiles
 
-* **Quick TCP Scan** – Fast scan of top ports with service detection
-* **Full TCP Scan** – Full 1‑65535 port scan
-* **UDP Scan** – Top UDP ports
-* **Vulnerability Scan** – Uses Nmap NSE scripts
-* **Masscan Scan** – High‑speed scanning with automatic sudo detection
+RedSocket includes multiple predefined scanning modes:
 
-### Custom Command Mode
-
-For advanced users, RedSocket allows full manual Nmap command entry while still providing:
-
-* Optional automatic result saving
-* Session logging
-* Real‑time terminal output
+* **Quick TCP Scan** – Fast scan of common ports with service detection
+* **Full TCP Scan** – Complete 1-65535 port scan
+* **UDP Scan** – Scan of top UDP ports
+* **Vulnerability Scan** – Uses Nmap NSE vulnerability scripts
+* **Masscan Scan** – High-speed full-range scanning with automatic sudo detection
 
 ---
 
-## Critical Service Detection
+### Custom Command Mode
 
-During scans, RedSocket automatically highlights dangerous or sensitive services in red, for example:
+Advanced users can execute raw Nmap commands while still benefiting from:
+
+* Automatic logging
+* Optional result saving
+* Live terminal output
+
+---
+
+### Critical Service Detection
+
+During scans, RedSocket highlights sensitive or high-value services:
+
+Example:
 
 ```
 [!] CRITICAL SERVICE → SSH (22)
 [!] CRITICAL SERVICE → RDP (3389)
 ```
 
-This allows faster decision‑making during reconnaissance.
+This allows faster decision-making during reconnaissance phases.
 
 ---
 
-## Automatic Result Saving
+### Automatic Result Saving
 
-After each scan, you can choose:
+After each scan, users can choose:
 
-* Save results in normal text format (`-oN`)
-* Save in all formats (`-oA`)
-* Or skip saving
+* Save results in normal format (`-oN`)
+* Save results in all formats (`-oA`)
+* Skip saving
 
-All files are stored on the Desktop for quick access.
+Files are automatically stored on the Desktop with timestamped filenames.
 
 ---
 
-## Session Logging
+### Session Logging
 
 All executed commands are stored in:
 
@@ -78,31 +86,27 @@ All executed commands are stored in:
 redsocket_session.log
 ```
 
-This allows you to:
+This enables:
 
-* Reproduce previous scans
-* Keep audit history
-* Debug scan strategies
+* Scan reproducibility
+* Audit trails
+* Strategy debugging
 
 ---
 
-## Auto Update System
+### Auto-Update System
 
-RedSocket can check for new versions directly from GitHub and update itself automatically.
-
-```
-Menu → Check for updates
-```
+RedSocket can check for new versions directly from GitHub and update itself when a newer release is available.
 
 ---
 
 ## Requirements
 
 * Python 3.8+
-* Nmap installed and in PATH
+* Nmap installed and available in PATH
 * Masscan (optional but recommended)
 
-### Install dependencies (Linux)
+Install dependencies on Debian-based systems:
 
 ```
 sudo apt install nmap masscan
@@ -112,53 +116,82 @@ sudo apt install nmap masscan
 
 ## Installation
 
+Clone the repository:
+
 ```
-git clone https://github.com/yourusername/redsocket.git
-cd redsocket
+git clone https://github.com/phantomsecuritydev-ctrl/RedSocket.git
+cd RedSocket
 python3 redsocket.py
 ```
 
 ---
 
-## Example Workflow
+## Example Usage
 
 ```
 python3 redsocket.py
+```
+
+Select a scan profile from the menu and provide a target:
+
+```
 1
 192.168.1.10
 ```
 
-Output:
+Example output:
 
 ```
 [+] Running: nmap -F -sV 192.168.1.10
 [!] CRITICAL SERVICE → SSH (22)
 [✔] Scan completed
-Results saved to Desktop
 ```
+
+Results will be saved to the Desktop if enabled.
 
 ---
 
 ## Project Goals
 
-RedSocket is not meant to replace Nmap. It is designed to make Nmap faster to use in real‑world scenarios where:
+RedSocket is **not intended to replace Nmap**.
+Its goal is to make Nmap faster and easier to use in environments where:
 
 * time is limited
-* commands are easy to mistype
-* results need to be saved automatically
+* command syntax is easy to mistype
+* scan results must be archived automatically
+
+---
+
+## Legal Notice
+
+RedSocket does **not include or redistribute** Nmap or Masscan.
+It acts solely as a wrapper that executes these tools via system commands.
+
+This project is **not affiliated with or endorsed by** the Nmap Project.
+
+Nmap is licensed separately under its own license:
+https://nmap.org/book/man-legal.html
 
 ---
 
 ## License
 
-MIT License
+This project is licensed under the **GNU General Public License v3.0**.
 
 ---
 
 ## Disclaimer
 
-Use this tool only on systems you own or have permission to test. Unauthorized scanning may be illegal in your jurisdiction.
+This tool is intended for educational purposes and authorized security testing only.
 
-This tool is licensed under the MIT License.
-It requires Nmap to be installed on the system.
-Nmap is licensed separately under the Nmap Public Source License.
+Unauthorized network scanning may be illegal in your jurisdiction.
+The author assumes no responsibility for misuse or damage caused by this software.
+
+---
+
+## Author
+
+Daniel Di Blasi (Phantom)
+
+GitHub:
+https://github.com/phantomsecuritydev-ctrl/RedSocket
