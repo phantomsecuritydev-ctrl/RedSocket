@@ -191,7 +191,7 @@ The author assumes no responsibility for misuse or damage caused by this softwar
 ## Screenshots
 
 ### User Interface
-![User Interface](Images/interface.png)
+![User Interface](Images/Interface.png)
 
 ### Fast Scan Example
 ![Fast Scan](Images/Fastscan.png)
