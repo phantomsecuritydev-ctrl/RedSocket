@@ -4,7 +4,11 @@ RedSocket is an interactive command-line wrapper for Nmap and Masscan designed t
 
 It provides preconfigured scan profiles, automatic result management, and a clean menu-driven interface for fast and reliable scanning without memorizing complex command-line flags.
 
+
+![Logo](Images/RedSocket.png)
+
 ---
+
 
 ## Why RedSocket?
 
