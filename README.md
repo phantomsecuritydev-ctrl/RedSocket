@@ -187,6 +187,16 @@ This tool is intended for educational purposes and authorized security testing o
 Unauthorized network scanning may be illegal in your jurisdiction.
 The author assumes no responsibility for misuse or damage caused by this software.
 
+
+## Screenshots
+
+### User Interface
+![User Interface](screenshots/interface.png)
+
+### Fast Scan Example
+![Fast Scan](screenshots/Fastscan.png)
+
+
 ---
 
 ## Author
