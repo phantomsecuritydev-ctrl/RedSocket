@@ -193,8 +193,13 @@ The author assumes no responsibility for misuse or damage caused by this softwar
 ### User Interface
 ![User Interface](Images/Interface.png)
 
+### Input Save .Txt File
+![input save Interface](Images/Input.png)
+
 ### Fast Scan Example
 ![Fast Scan](Images/Fastscan.png)
+
+
 
 
 ---
